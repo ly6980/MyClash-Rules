@@ -24,7 +24,7 @@ jobs:
 
       - name: Download upstream MyClash script
         run: |
-          curl -fsSL https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js -o /tmp/mihomoScript.js
+          curl -fsSL https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js             -o /tmp/mihomoScript.js
 
       - name: Validate files
         run: |
@@ -37,14 +37,38 @@ jobs:
         run: |
           cat /tmp/mihomoScript.js Script/customPatch.js > Script/mihomoScript-custom.js
 
-      - name: Commit generated script
+      - name: Commit and push generated script
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add Script/mihomoScript-custom.js
+
           if git diff --cached --quiet; then
             echo "No upstream changes."
-          else
-            git commit -m "chore: sync upstream MyClash and regenerate custom script"
-            git push origin HEAD:myclash-rules
+            exit 0
           fi
+
+          git commit -m "chore: sync upstream MyClash and regenerate custom script"
+
+          # 处理运行期间 custom 分支被其他提交更新的情况。
+          # 最多重试 3 次，避免并发运行造成 non-fast-forward。
+          for i in 1 2 3; do
+            git fetch origin myclash-rules
+            git rebase origin/myclash-rules || {
+              git rebase --abort
+              echo "Rebase failed."
+              exit 1
+            }
+
+            if git push origin HEAD:myclash-rules; then
+              echo "Push succeeded."
+              exit 0
+            fi
+
+            echo "Push rejected, retrying..."
+            sleep 3
+          done
+
+          echo "Push failed after 3 attempts."
+          exit 1
