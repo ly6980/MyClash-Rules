@@ -1,6 +1,9 @@
 name: 同步 MyClash 上游并生成自定义脚本
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: '17 */6 * * *'
   workflow_dispatch:
