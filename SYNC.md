@@ -1,0 +1,1 @@
+This repository contains the custom MyClash build and its upstream synchronization workflow.
