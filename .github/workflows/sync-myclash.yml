@@ -1,0 +1,47 @@
+name: 同步 MyClash 上游并生成自定义脚本
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout custom branch
+        uses: actions/checkout@v4
+        with:
+          ref: myclash-rules
+          fetch-depth: 1
+
+      - name: Download upstream MyClash script
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js -o /tmp/mihomoScript.js
+
+      - name: Validate files
+        run: |
+          test -s /tmp/mihomoScript.js
+          test -s Script/customPatch.js
+          grep -q "MyClash 用户追加功能" Script/customPatch.js
+          grep -q "function main(config)" /tmp/mihomoScript.js
+
+      - name: Generate custom script
+        run: |
+          cat /tmp/mihomoScript.js Script/customPatch.js > Script/mihomoScript-custom.js
+
+      - name: Commit generated script
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Script/mihomoScript-custom.js
+          if git diff --cached --quiet; then
+            echo "No upstream changes."
+          else
+            git commit -m "chore: sync upstream MyClash and regenerate custom script"
+            git push origin HEAD:myclash-rules
+          fi
