@@ -24,7 +24,76 @@ jobs:
 
       - name: Download upstream MyClash script
         run: |
-          curl -fsSL https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js             -o /tmp/mihomoScript.js
+          curl -fsSL https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js -o /tmp/mihomoScript.js
+
+      - name: Read upstream commit title
+        run: |
+          git fetch --depth=1 https://github.com/AIsouler/MyClash.git main
+          echo "UPSTREAM_TITLE=$(git log -1 --format=%s FETCH_HEAD)" >> "$GITHUB_ENV"
+
+      - name: Translate upstream commit title
+        run: |
+          title="$UPSTREAM_TITLE"
+
+          # Conventional Commit 类型中文化
+          case "$title" in
+            feat:*)     title="功能：${title#feat: }" ;;
+            fix:*)      title="修复：${title#fix: }" ;;
+            perf:*)     title="性能优化：${title#perf: }" ;;
+            docs:*)     title="文档：${title#docs: }" ;;
+            refactor:*) title="重构：${title#refactor: }" ;;
+            chore:*)    title="维护：${title#chore: }" ;;
+            ci:*)       title="持续集成：${title#ci: }" ;;
+            test:*)     title="测试：${title#test: }" ;;
+            build:*)    title="构建：${title#build: }" ;;
+            revert:*)   title="回滚：${title#revert: }" ;;
+          esac
+
+          # 常见英文词汇的轻量中文化。
+          # 不追求机器翻译，只处理常见提交标题；无法识别的部分保留英文。
+          title=$(printf '%s' "$title" | sed \
+            -e 's/\\badd\\b/新增/gI' \
+            -e 's/\\badded\\b/新增/gI' \
+            -e 's/\\bremove\\b/移除/gI' \
+            -e 's/\\bremoved\\b/移除/gI' \
+            -e 's/\\bupdate\\b/更新/gI' \
+            -e 's/\\bupdated\\b/更新/gI' \
+            -e 's/\\bfix\\b/修复/gI' \
+            -e 's/\\bhandle\\b/处理/gI' \
+            -e 's/\\boptimize\\b/优化/gI' \
+            -e 's/\\boptimise\\b/优化/gI' \
+            -e 's/\\bimprove\\b/改进/gI' \
+            -e 's/\\breplace\\b/替换/gI' \
+            -e 's/\\bchange\\b/修改/gI' \
+            -e 's/\\btrigger\\b/触发/gI' \
+            -e 's/\\binitial\\b/初始/gI' \
+            -e 's/\\bconcurrent\\b/并发/gI' \
+            -e 's/\\bcustom\\b/自定义/gI' \
+            -e 's/\\bbranch\\b/分支/gI' \
+            -e 's/\\bupstream\\b/上游/gI' \
+            -e 's/\\bsync\\b/同步/gI' \
+            -e 's/\\bsupport\\b/支持/gI' \
+            -e 's/\\bcompatibility\\b/兼容性/gI' \
+            -e 's/\\brules\\b/规则/gI' \
+            -e 's/\\brule\\b/规则/gI' \
+            -e 's/\\bworkflow\\b/工作流/gI' \
+            -e 's/\\bscript\\b/脚本/gI' \
+            -e 's/\\btest\\b/测试/gI' \
+            -e 's/\\bformat\\b/格式化/gI' \
+            -e 's/\\brename\\b/重命名/gI' \
+            -e 's/\\brefactor\\b/重构/gI' \
+            -e 's/\\bsecurity\\b/安全/gI' \
+            -e 's/\\bperformance\\b/性能/gI' \
+            -e 's/\\bmultiplier\\b/倍率/gI' \
+            -e 's/\\bmatching\\b/匹配/gI' \
+            -e 's/\\bregion\\b/地区/gI' \
+            -e 's/\\bnode\\b/节点/gI' \
+            -e 's/\\bproxy\\b/代理/gI' \
+            -e 's/\\bscript\\b/脚本/gI')
+
+          echo "TRANSLATED_TITLE=$title" >> "$GITHUB_ENV"
+          echo "Upstream: $UPSTREAM_TITLE"
+          echo "Commit title: $title"
 
       - name: Validate files
         run: |
@@ -49,7 +118,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "chore: sync upstream MyClash and regenerate custom script"
+          git commit -m "$TRANSLATED_TITLE" -m "上游提交：$UPSTREAM_TITLE"
 
           # 处理运行期间 custom 分支被其他提交更新的情况。
           # 最多重试 3 次，避免并发运行造成 non-fast-forward。
